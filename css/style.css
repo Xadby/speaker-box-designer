@@ -1,0 +1,381 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+    gap: 0;
+}
+
+/* Контрольная панель */
+.control-panel {
+    width: 35%;
+    background: white;
+    overflow-y: auto;
+    padding: 20px;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+}
+
+.panel-header {
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 15px;
+}
+
+.panel-header h1 {
+    font-size: 24px;
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.panel-header p {
+    color: #999;
+    font-size: 12px;
+}
+
+/* Вкладки */
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 20px;
+    background: #f5f5f5;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+.tab-button {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 8px;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tab-button:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.tab-button.active {
+    background: #667eea;
+    color: white;
+}
+
+/* Содержимое вкладок */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Слайдеры */
+.slider-group {
+    margin-bottom: 20px;
+}
+
+.slider-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #333;
+}
+
+.slider-group span {
+    color: #667eea;
+    font-weight: 700;
+}
+
+.slider {
+    margin-bottom: 10px;
+}
+
+/* Кастомизация noUiSlider */
+.noUi-target {
+    background: #e0e0e0;
+    border-radius: 5px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.noUi-connect {
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+}
+
+.noUi-handle {
+    background: white;
+    border: 3px solid #667eea;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    cursor: grab;
+    width: 22px;
+    height: 22px;
+    top: -6px;
+}
+
+.noUi-handle:active {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.noUi-handle::before,
+.noUi-handle::after {
+    display: none;
+}
+
+/* Инфо боксы */
+.info-box {
+    background: linear-gradient(135deg, #667eea15, #764ba215);
+    border-left: 4px solid #667eea;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+}
+
+.info-box p {
+    margin: 8px 0;
+    font-size: 13px;
+    color: #333;
+}
+
+.info-box strong {
+    color: #667eea;
+    font-size: 14px;
+}
+
+/* Чекбоксы и радиокнопки */
+.radio-label,
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin: 8px 0;
+    background: #f9f9f9;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.radio-label:hover,
+.checkbox-label:hover {
+    background: #f0f0f0;
+    border-color: #667eea;
+}
+
+.radio-label input[type="radio"],
+.checkbox-label input[type="radio"],
+.radio-label input[type="checkbox"],
+.checkbox-label input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-right: 12px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.radio-label input[type="radio"],
+.checkbox-label input[type="radio"] {
+    border-radius: 50%;
+}
+
+.radio-label input[type="radio"]:checked,
+.checkbox-label input[type="radio"]:checked,
+.radio-label input[type="checkbox"]:checked,
+.checkbox-label input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.radio-label input[type="radio"]:checked::after,
+.checkbox-label input[type="radio"]:checked::after {
+    content: '✓';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.radio-label span,
+.checkbox-label span {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Группы кнопок */
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+/* Кнопки экспорта */
+.export-btn {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.export-btn:active {
+    transform: translateY(0);
+}
+
+.export-btn.reset {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+}
+
+/* Файловый ввод */
+.file-input-wrapper {
+    position: relative;
+}
+
+/* Заголовки секций */
+h3 {
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+h3:first-child {
+    margin-top: 0;
+}
+
+/* Viewport контейнер */
+.viewport-container {
+    flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+#canvas-3d {
+    width: 100%;
+    height: 100%;
+}
+
+.viewport-info {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #666;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Скролл */
+.control-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.control-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.control-panel::-webkit-scrollbar-thumb {
+    background: #667eea;
+    border-radius: 4px;
+}
+
+.control-panel::-webkit-scrollbar-thumb:hover {
+    background: #764ba2;
+}
+
+/* Адаптивность */
+@media (max-width: 1024px) {
+    .control-panel {
+        width: 40%;
+    }
+    
+    .tab-button {
+        font-size: 11px;
+        padding: 8px 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .control-panel {
+        width: 100%;
+        height: 40vh;
+        border-right: none;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .viewport-container {
+        height: 60vh;
+    }
+    
+    .tab-button {
+        font-size: 10px;
+        padding: 6px 4px;
+    }
+}

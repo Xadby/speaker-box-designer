@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speaker Box Designer - Конструктор акустических корпусов</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/controls.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider.js/14.7.0/noUiSlider.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider.js/14.7.0/nouislider.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Левая панель управления -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h1>🎵 Speaker Box Designer</h1>
+                <p>Конструктор акустических корпусов</p>
+            </div>
+
+            <!-- Вкладки -->
+            <div class="tabs">
+                <button class="tab-button active" data-tab="box-type">Тип корпуса</button>
+                <button class="tab-button" data-tab="dimensions">Размеры</button>
+                <button class="tab-button" data-tab="port">Порт/Фазоинвертор</button>
+                <button class="tab-button" data-tab="driver">Динамики</button>
+                <button class="tab-button" data-tab="export">Экспорт</button>
+            </div>
+
+            <!-- Вкладка: Тип корпуса -->
+            <div class="tab-content active" id="box-type">
+                <h3>Выберите тип корпуса</h3>
+                <div class="box-types">
+                    <label class="radio-label">
+                        <input type="radio" name="boxType" value="sealed" checked>
+                        <span>✅ Закрытый (Sealed)</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="boxType" value="ported">
+                        <span>🔊 Фазоинвертор (Ported)</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="boxType" value="slotPort">
+                        <span>📄 Щелевой порт (Slot Port)</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="boxType" value="bandpass4">
+                        <span>🎚️ Бандпасс 4-го порядка</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="boxType" value="bandpass6">
+                        <span>🎚️ Бандпасс 6-го порядка</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="boxType" value="multiDriver">
+                        <span>🔊 Несколько динамиков</span>
+                    </label>
+                </div>
+
+                <h3>Расположение портов</h3>
+                <div class="port-locations">
+                    <label class="checkbox-label">
+                        <input type="radio" name="portLocation" value="front" checked>
+                        <span>Спереди</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="portLocation" value="back">
+                        <span>Сзади</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="portLocation" value="side">
+                        <span>Сбоку</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Вкладка: Размеры -->
+            <div class="tab-content" id="dimensions">
+                <h3>Внешние размеры (мм)</h3>
+                
+                <div class="slider-group">
+                    <label>Ширина: <span id="widthValue">400</span> мм</label>
+                    <div id="widthSlider" class="slider"></div>
+                </div>
+
+                <div class="slider-group">
+                    <label>Высота: <span id="heightValue">300</span> мм</label>
+                    <div id="heightSlider" class="slider"></div>
+                </div>
+
+                <div class="slider-group">
+                    <label>Глубина: <span id="depthValue">300</span> мм</label>
+                    <div id="depthSlider" class="slider"></div>
+                </div>
+
+                <h3>Толщина материала (мм)</h3>
+                
+                <div class="slider-group">
+                    <label>Толщина МДФ: <span id="thicknessValue">18</span> мм</label>
+                    <div id="thicknessSlider" class="slider"></div>
+                </div>
+
+                <h3>Внутренний объем</h3>
+                <div class="info-box">
+                    <p>Объем: <strong id="volumeLiters">0</strong> л</p>
+                    <p>Объем: <strong id="volumeCm3">0</strong> см³</p>
+                    <p>Объем: <strong id="volumeInches">0</strong> дюйм³</p>
+                </div>
+            </div>
+
+            <!-- Вкладка: Портальный открывающийся механизм -->
+            <div class="tab-content" id="port">
+                <h3>Фазоинвертор</h3>
+                
+                <label class="checkbox-label">
+                    <input type="checkbox" id="usePort">
+                    <span>Использовать фазоинвертор</span>
+                </label>
+
+                <div id="portSettings" style="display: none;">
+                    <div class="slider-group">
+                        <label>Диаметр порта: <span id="portDiameterValue">75</span> мм</label>
+                        <div id="portDiameterSlider" class="slider"></div>
+                    </div>
+
+                    <div class="slider-group">
+                        <label>Длина порта: <span id="portLengthValue">150</span> мм</label>
+                        <div id="portLengthSlider" class="slider"></div>
+                    </div>
+
+                    <div class="info-box">
+                        <p>Резонансная частота: <strong id="tuningFreq">0</strong> Гц</p>
+                    </div>
+                </div>
+
+                <h3>Щелевой порт</h3>
+                
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useSlotPort">
+                    <span>Использовать щелевой порт</span>
+                </label>
+
+                <div id="slotPortSettings" style="display: none;">
+                    <div class="slider-group">
+                        <label>Ширина щели: <span id="slotWidthValue">40</span> мм</label>
+                        <div id="slotWidthSlider" class="slider"></div>
+                    </div>
+
+                    <div class="slider-group">
+                        <label>Высота щели: <span id="slotHeightValue">100</span> мм</label>
+                        <div id="slotHeightSlider" class="slider"></div>
+                    </div>
+
+                    <div class="slider-group">
+                        <label>Длина щели: <span id="slotLengthValue">100</span> мм</label>
+                        <div id="slotLengthSlider" class="slider"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка: Динамики -->
+            <div class="tab-content" id="driver">
+                <h3>Параметры динамика</h3>
+                
+                <div class="slider-group">
+                    <label>Диаметр динамика (дюймы): <span id="driverSizeInchesValue">6.5</span> "</label>
+                    <div id="driverSizeInchesSlider" class="slider"></div>
+                </div>
+
+                <div class="slider-group">
+                    <label>Диаметр динамика (см): <span id="driverSizeCMValue">16.5</span> см</label>
+                    <div id="driverSizeCMSlider" class="slider"></div>
+                </div>
+
+                <h3>Расположение динамика</h3>
+                <div class="port-locations">
+                    <label class="checkbox-label">
+                        <input type="radio" name="driverLocation" value="front" checked>
+                        <span>Спереди</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="driverLocation" value="back">
+                        <span>Сзади</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="driverLocation" value="side">
+                        <span>Сбоку</span>
+                    </label>
+                </div>
+
+                <h3>Количество динамиков (для многодрайверных конфигураций)</h3>
+                <div class="slider-group">
+                    <label>Количество: <span id="driverCountValue">1</span></label>
+                    <div id="driverCountSlider" class="slider"></div>
+                </div>
+            </div>
+
+            <!-- Вкладка: Экспорт -->
+            <div class="tab-content" id="export">
+                <h3>Экспортировать проект</h3>
+                
+                <div class="button-group">
+                    <button class="export-btn" id="exportJSON">
+                        📄 Сохранить как JSON
+                    </button>
+                    <button class="export-btn" id="exportPDF">
+                        📋 Экспортировать чертеж (PDF)
+                    </button>
+                    <button class="export-btn" id="exportDXF">
+                        📐 Экспортировать DXF
+                    </button>
+                    <button class="export-btn" id="exportSTL">
+                        🎁 Экспортировать STL
+                    </button>
+                </div>
+
+                <h3>Импортировать проект</h3>
+                <div class="file-input-wrapper">
+                    <input type="file" id="importJSON" accept=".json" style="display: none;">
+                    <button class="export-btn" onclick="document.getElementById('importJSON').click();">
+                        📂 Загрузить JSON
+                    </button>
+                </div>
+
+                <h3>Быстрые действия</h3>
+                <div class="button-group">
+                    <button class="export-btn reset" id="resetBtn">🔄 Сброс значений</button>
+                    <button class="export-btn" id="screenshotBtn">📷 Скриншот 3D</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая часть: 3D сцена -->
+        <div class="viewport-container">
+            <div id="canvas-3d"></div>
+            <div class="viewport-info">
+                <p>🖱️ Левая кнопка: вращение | 🔍 Колесо: приближение | 🖱️ Правая кнопка: сдвиг</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрипты -->
+    <script src="js/calculator.js"></script>
+    <script src="js/box-geometry.js"></script>
+    <script src="js/three-setup.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
