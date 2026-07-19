@@ -4,18 +4,18 @@
 
 const sliders = {};
 const sliderConfigs = {
-    width: { min: 200, max: 1200, step: 10, start: 400 },
-    height: { min: 200, max: 800, step: 10, start: 300 },
-    depth: { min: 200, max: 1000, step: 10, start: 300 },
-    thickness: { min: 10, max: 30, step: 1, start: 18 },
+    width: { min: 3, max: 1200, step: 1, start: 400 },
+    height: { min: 3, max: 800, step: 1, start: 300 },
+    depth: { min: 3, max: 1000, step: 1, start: 300 },
+    thickness: { min: 3, max: 30, step: 0.1, start: 18 },
     portDiameter: { min: 50, max: 200, step: 5, start: 75 },
     portLength: { min: 50, max: 300, step: 10, start: 150 },
     slotWidth: { min: 20, max: 100, step: 5, start: 40 },
     slotHeight: { min: 50, max: 200, step: 5, start: 100 },
     slotLength: { min: 50, max: 300, step: 10, start: 100 },
-    driverSizeInches: { min: 4, max: 12, step: 0.5, start: 6.5 },
-    driverSizeCM: { min: 10, max: 30, step: 0.5, start: 16.5 },
-    driverCount: { min: 1, max: 4, step: 1, start: 1 }
+    driverSizeInches: { min: 0.1, max: 100, step: 0.1, start: 6.5 },
+    driverSizeCM: { min: 0.1, max: 300, step: 0.1, start: 16.5 },
+    driverCount: { min: 1, max: 8, step: 1, start: 1 }
 };
 
 function initializeUI() {
@@ -40,7 +40,7 @@ function initializeUI() {
                 },
                 step: config.step,
                 format: {
-                    to: val => Math.round(val * 10) / 10,
+                    to: val => Math.round(val * 100) / 100,
                     from: val => parseFloat(val)
                 }
             });
@@ -55,7 +55,7 @@ function initializeUI() {
         }
     });
     
-    // Вклад��и
+    // Вкладки
     const tabButtons = document.querySelectorAll('.tab-button');
     console.log(`Найдено ${tabButtons.length} кнопок вкладок`);
     
@@ -276,7 +276,7 @@ function updateAllUI() {
     if (sliders.driverSizeCM && sliders.driverSizeCM.noUiSlider) sliders.driverSizeCM.noUiSlider.set(calculator.driverDiameter / 10);
     if (sliders.driverCount && sliders.driverCount.noUiSlider) sliders.driverCount.noUiSlider.set(calculator.driverCount);
     
-    // Обновить радиокнопки
+    // Обновить радиок��опки
     const boxTypeRadio = document.querySelector(`input[name="boxType"][value="${calculator.boxType}"]`);
     if (boxTypeRadio) boxTypeRadio.checked = true;
     
@@ -297,56 +297,56 @@ function updateDisplayValues() {
     
     // Размеры
     const widthValue = document.getElementById('widthValue');
-    if (widthValue) widthValue.textContent = calculator.width;
+    if (widthValue) widthValue.textContent = calculator.width.toFixed(2);
     
     const heightValue = document.getElementById('heightValue');
-    if (heightValue) heightValue.textContent = calculator.height;
+    if (heightValue) heightValue.textContent = calculator.height.toFixed(2);
     
     const depthValue = document.getElementById('depthValue');
-    if (depthValue) depthValue.textContent = calculator.depth;
+    if (depthValue) depthValue.textContent = calculator.depth.toFixed(2);
     
     const thicknessValue = document.getElementById('thicknessValue');
-    if (thicknessValue) thicknessValue.textContent = calculator.thickness;
+    if (thicknessValue) thicknessValue.textContent = calculator.thickness.toFixed(2);
     
     // Порты
     const portDiameterValue = document.getElementById('portDiameterValue');
-    if (portDiameterValue) portDiameterValue.textContent = calculator.portDiameter;
+    if (portDiameterValue) portDiameterValue.textContent = calculator.portDiameter.toFixed(2);
     
     const portLengthValue = document.getElementById('portLengthValue');
-    if (portLengthValue) portLengthValue.textContent = calculator.portLength;
+    if (portLengthValue) portLengthValue.textContent = calculator.portLength.toFixed(2);
     
     const tuningFreq = document.getElementById('tuningFreq');
-    if (tuningFreq) tuningFreq.textContent = frequency;
+    if (tuningFreq) tuningFreq.textContent = frequency.toFixed(2);
     
     const slotWidthValue = document.getElementById('slotWidthValue');
-    if (slotWidthValue) slotWidthValue.textContent = calculator.slotWidth;
+    if (slotWidthValue) slotWidthValue.textContent = calculator.slotWidth.toFixed(2);
     
     const slotHeightValue = document.getElementById('slotHeightValue');
-    if (slotHeightValue) slotHeightValue.textContent = calculator.slotHeight;
+    if (slotHeightValue) slotHeightValue.textContent = calculator.slotHeight.toFixed(2);
     
     const slotLengthValue = document.getElementById('slotLengthValue');
-    if (slotLengthValue) slotLengthValue.textContent = calculator.slotLength;
+    if (slotLengthValue) slotLengthValue.textContent = calculator.slotLength.toFixed(2);
     
-    // Динамик
+    // Динамик (любой размер, от 0.1 см)
     const inchesValue = calculator.driverDiameter / 25.4;
     const driverSizeInchesValue = document.getElementById('driverSizeInchesValue');
-    if (driverSizeInchesValue) driverSizeInchesValue.textContent = (Math.round(inchesValue * 10) / 10).toFixed(1);
+    if (driverSizeInchesValue) driverSizeInchesValue.textContent = inchesValue.toFixed(2);
     
     const driverSizeCMValue = document.getElementById('driverSizeCMValue');
-    if (driverSizeCMValue) driverSizeCMValue.textContent = (calculator.driverDiameter / 10).toFixed(1);
+    if (driverSizeCMValue) driverSizeCMValue.textContent = (calculator.driverDiameter / 10).toFixed(2);
     
     const driverCountValue = document.getElementById('driverCountValue');
     if (driverCountValue) driverCountValue.textContent = calculator.driverCount;
     
     // Объем
     const volumeLiters = document.getElementById('volumeLiters');
-    if (volumeLiters) volumeLiters.textContent = volume.liters;
+    if (volumeLiters) volumeLiters.textContent = volume.liters.toFixed(2);
     
     const volumeCm3 = document.getElementById('volumeCm3');
-    if (volumeCm3) volumeCm3.textContent = volume.cm3;
+    if (volumeCm3) volumeCm3.textContent = volume.cm3.toFixed(2);
     
     const volumeInches = document.getElementById('volumeInches');
-    if (volumeInches) volumeInches.textContent = volume.inches;
+    if (volumeInches) volumeInches.textContent = volume.inches.toFixed(2);
 }
 
 function updateThreeView() {
