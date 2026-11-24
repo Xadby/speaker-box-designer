@@ -222,7 +222,7 @@ function drawPart(ctx, part, x, y, scale, t) {
 }
 
 export async function exportPDF(design, state, screenshot) {
-    if (!window.jspdf) throw new Error('Библиотека jsPDF не загрузилась — проверьте подключение к интернету');
+    if (!window.jspdf) throw new Error('Библиотека jsPDF не загрузилась');
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
 

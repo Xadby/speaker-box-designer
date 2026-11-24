@@ -22,7 +22,19 @@ python3 -m http.server 8000
 # открыть http://localhost:8000
 ```
 
-Three.js и jsPDF подгружаются с CDN jsDelivr — нужен интернет.
+Все библиотеки (Three.js, jsPDF) лежат в `vendor/`, интернет не нужен.
+
+## Программа для Windows (.exe)
+
+Портативный `.exe` (без установки) собирается через Electron:
+
+```bash
+npm install
+npm start          # запустить как десктоп-приложение
+npm run dist:win   # собрать dist/SpeakerBoxDesigner-<версия>-x64.exe
+```
+
+На Linux для сборки под Windows нужен Wine (`wine64` + `wine32`). Также exe собирается в GitHub Actions (workflow «Build Windows exe»: вручную или при пуше тега `v*`) — файл появится в артефактах.
 
 ## Управление
 
@@ -41,6 +53,9 @@ js/scene.js       3D-сцена Three.js
 js/textures.js    процедурные текстуры и материалы
 js/ui.js          панель управления и вывод результатов
 js/export.js      экспорт JSON / PNG / STL / DXF / PDF
+vendor/           Three.js r160 и jsPDF 2.5.1
+electron/main.js  оболочка десктоп-приложения
+build/            иконки приложения
 ```
 
 ## Лицензия
