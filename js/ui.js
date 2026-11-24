@@ -1,434 +1,209 @@
 /**
- * Управление UI элементами
+ * Построение и синхронизация элементов управления.
  */
+import { getPath } from './state.js';
+import { FINISH_LIBRARY, CONE_LIBRARY, getTexturePreview } from './textures.js';
+import { BOX_TYPE_LABELS, round } from './calculator.js';
 
-const sliders = {};
-const sliderConfigs = {
-    width: { min: 3, max: 1200, step: 1, start: 400 },
-    height: { min: 3, max: 800, step: 1, start: 300 },
-    depth: { min: 3, max: 1000, step: 1, start: 300 },
-    thickness: { min: 3, max: 30, step: 0.1, start: 18 },
-    portDiameter: { min: 50, max: 200, step: 5, start: 75 },
-    portLength: { min: 50, max: 300, step: 10, start: 150 },
-    slotWidth: { min: 20, max: 100, step: 5, start: 40 },
-    slotHeight: { min: 50, max: 200, step: 5, start: 100 },
-    slotLength: { min: 50, max: 300, step: 10, start: 100 },
-    driverSizeInches: { min: 0.1, max: 100, step: 0.1, start: 6.5 },
-    driverSizeCM: { min: 0.1, max: 300, step: 0.1, start: 16.5 },
-    driverCount: { min: 1, max: 8, step: 1, start: 1 }
+const CHOICE_OPTIONS = {
+    boxType: [
+        { value: 'sealed', title: BOX_TYPE_LABELS.sealed, desc: 'Плотный, точный бас, компактный корпус' },
+        { value: 'ported', title: BOX_TYPE_LABELS.ported, desc: 'Громче на низких частотах, настройка трубой' },
+        { value: 'slot', title: BOX_TYPE_LABELS.slot, desc: 'Порт-щель вдоль стенки, прочная конструкция' },
+        { value: 'bandpass4', title: BOX_TYPE_LABELS.bandpass4, desc: 'Закрытая камера + камера с портом' },
+        { value: 'bandpass6', title: BOX_TYPE_LABELS.bandpass6, desc: 'Обе камеры с портами, максимальная отдача' }
+    ],
+    'driver.location': [
+        { value: 'front', title: 'Спереди' }, { value: 'back', title: 'Сзади' },
+        { value: 'side', title: 'Сбоку' }, { value: 'top', title: 'Сверху' }
+    ],
+    'port.location': [
+        { value: 'front', title: 'Спереди' }, { value: 'back', title: 'Сзади' },
+        { value: 'side', title: 'Сбоку' }, { value: 'top', title: 'Сверху' }
+    ],
+    'driver.cone': Object.entries(CONE_LIBRARY).map(([value, d]) => ({ value, title: d.label, texture: d.tex })),
+    'finish.body': Object.entries(FINISH_LIBRARY).map(([value, d]) => ({ value, title: d.label, texture: value })),
+    'finish.baffle': Object.entries(FINISH_LIBRARY).map(([value, d]) => ({ value, title: d.label, texture: value }))
 };
 
-function initializeUI() {
-    console.log('Инициализация UI...');
-    
-    // Инициализация слайдеров
-    Object.keys(sliderConfigs).forEach(key => {
-        const config = sliderConfigs[key];
-        const element = document.getElementById(`${key}Slider`);
-        if (!element) {
-            console.warn(`Слайдер ${key} не найден`);
-            return;
-        }
-        
-        try {
-            noUiSlider.create(element, {
-                start: config.start || config.min,
-                connect: 'lower',
-                range: {
-                    min: config.min,
-                    max: config.max
-                },
-                step: config.step,
-                format: {
-                    to: val => Math.round(val * 100) / 100,
-                    from: val => parseFloat(val)
-                }
-            });
-            
-            sliders[key] = element;
-            
-            // Обработчик изменения
-            element.noUiSlider.on('update', () => updateFromUI());
-            console.log(`Слайдер ${key} инициализирован`);
-        } catch (e) {
-            console.error(`Ошибка инициализации ${key}:`, e);
-        }
+const DRIVER_PRESETS = [4, 5.25, 6.5, 8, 10, 12, 15, 18];
+
+let uid = 0;
+
+/**
+ * @param {object} api — { getState(), set(path, value), action(name) }
+ */
+export function initUI(api) {
+    initTabs();
+    document.querySelectorAll('.field').forEach(el => buildField(el, api));
+    document.querySelectorAll('[data-choice]').forEach(el => buildChoices(el, api));
+    document.querySelectorAll('[data-toggle]').forEach(input => {
+        input.addEventListener('change', () => api.set(input.dataset.toggle, input.checked));
     });
-    
-    // Вкладки
-    const tabButtons = document.querySelectorAll('.tab-button');
-    console.log(`Найдено ${tabButtons.length} кнопок вкладок`);
-    
-    tabButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
+    document.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', e => {
             e.preventDefault();
-            const tabName = e.target.dataset.tab;
-            console.log('Нажата вкладка:', tabName);
-            switchTab(tabName);
+            api.action(btn.dataset.action);
         });
     });
-    
-    // Радиокнопки типа коробки
-    document.querySelectorAll('input[name="boxType"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            console.log('Тип коробки:', radio.value);
-            updateFromUI();
+
+    const presets = document.getElementById('driverPresets');
+    DRIVER_PRESETS.forEach(inch => {
+        const chip = document.createElement('button');
+        chip.className = 'chip';
+        chip.textContent = `${String(inch).replace('.', ',')}″`;
+        chip.title = `${round(inch * 2.54, 1)} см`;
+        chip.addEventListener('click', () => api.set('driver.diameter', round(inch * 25.4, 1)));
+        presets.appendChild(chip);
+    });
+
+    // Превью текстур генерируются после первой отрисовки, чтобы не задерживать запуск
+    requestIdleCallbackCompat(() => {
+        document.querySelectorAll('.swatch[data-texture]').forEach(sw => {
+            sw.style.backgroundImage = `url(${getTexturePreview(sw.dataset.texture)})`;
         });
     });
-    
-    // Радиокнопки расположения портов
-    document.querySelectorAll('input[name="portLocation"]').forEach(radio => {
-        radio.addEventListener('change', () => updateFromUI());
-    });
-    
-    document.querySelectorAll('input[name="driverLocation"]').forEach(radio => {
-        radio.addEventListener('change', () => updateFromUI());
-    });
-    
-    // Чекбоксы портов
-    const usePort = document.getElementById('usePort');
-    if (usePort) {
-        usePort.addEventListener('change', (e) => {
-            document.getElementById('portSettings').style.display = e.target.checked ? 'block' : 'none';
-            updateFromUI();
-        });
-    }
-    
-    const useSlotPort = document.getElementById('useSlotPort');
-    if (useSlotPort) {
-        useSlotPort.addEventListener('change', (e) => {
-            document.getElementById('slotPortSettings').style.display = e.target.checked ? 'block' : 'none';
-            updateFromUI();
-        });
-    }
-    
-    // Кнопки экспорта
-    const exportJSON = document.getElementById('exportJSON');
-    if (exportJSON) {
-        exportJSON.addEventListener('click', () => {
-            ExportManager.exportJSON();
-            showNotification('JSON экспортирован');
-        });
-    }
-    
-    const exportPDF = document.getElementById('exportPDF');
-    if (exportPDF) {
-        exportPDF.addEventListener('click', () => {
-            ExportManager.exportPDF();
-            showNotification('PDF экспортирован');
-        });
-    }
-    
-    const exportDXF = document.getElementById('exportDXF');
-    if (exportDXF) {
-        exportDXF.addEventListener('click', () => {
-            ExportManager.exportDXF();
-            showNotification('DXF экспортирован');
-        });
-    }
-    
-    const exportSTL = document.getElementById('exportSTL');
-    if (exportSTL) {
-        exportSTL.addEventListener('click', () => {
-            ExportManager.exportSTL();
-            showNotification('STL экспортирован');
-        });
-    }
-    
-    const importJSON = document.getElementById('importJSON');
-    if (importJSON) {
-        importJSON.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                ExportManager.importJSON(e.target.files[0]);
-                showNotification('JSON загружен');
-            }
-        });
-    }
-    
-    const resetBtn = document.getElementById('resetBtn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-            if (confirm('Сбросить все значения на стандартные?')) {
-                window.calculator = new BoxCalculator();
-                updateAllUI();
-                showNotification('Значения сброшены');
-            }
-        });
-    }
-    
-    const screenshotBtn = document.getElementById('screenshotBtn');
-    if (screenshotBtn) {
-        screenshotBtn.addEventListener('click', () => {
-            if (window.threeSetup) {
-                const screenshot = threeSetup.getScreenshot();
-                const a = document.createElement('a');
-                a.href = screenshot;
-                a.download = `speaker-box-3d-${new Date().getTime()}.png`;
-                a.click();
-                showNotification('Скриншот сохранен');
-            }
-        });
-    }
-    
-    console.log('UI инициализирован успешно');
 }
 
-function switchTab(tabName) {
-    console.log('Переключение на вкладку:', tabName);
-    
-    // Скрыть все вкладки
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
+function initTabs() {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.toggle('active', t === tab));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === tab.dataset.tab));
+        });
     });
-    
-    // Деактивировать все кнопки
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Активировать выбранную вкладку
-    const selectedTab = document.getElementById(tabName);
-    if (selectedTab) {
-        selectedTab.classList.add('active');
-        console.log('Вкладка активирована:', tabName);
-    }
-    
-    // Активировать кнопку
-    const btn = document.querySelector(`[data-tab="${tabName}"]`);
-    if (btn) {
-        btn.classList.add('active');
-        console.log('Кнопка активирована:', tabName);
-    }
 }
 
-function updateFromUI() {
-    if (!window.calculator) {
-        console.warn('Calculator не инициализирован');
-        return;
-    }
-    
-    // Прочитать значения из слайдеров
-    if (sliders.width && sliders.width.noUiSlider) {
-        calculator.width = parseFloat(sliders.width.noUiSlider.get());
-    }
-    if (sliders.height && sliders.height.noUiSlider) {
-        calculator.height = parseFloat(sliders.height.noUiSlider.get());
-    }
-    if (sliders.depth && sliders.depth.noUiSlider) {
-        calculator.depth = parseFloat(sliders.depth.noUiSlider.get());
-    }
-    if (sliders.thickness && sliders.thickness.noUiSlider) {
-        calculator.thickness = parseFloat(sliders.thickness.noUiSlider.get());
-    }
-    if (sliders.portDiameter && sliders.portDiameter.noUiSlider) {
-        calculator.portDiameter = parseFloat(sliders.portDiameter.noUiSlider.get());
-    }
-    if (sliders.portLength && sliders.portLength.noUiSlider) {
-        calculator.portLength = parseFloat(sliders.portLength.noUiSlider.get());
-    }
-    if (sliders.slotWidth && sliders.slotWidth.noUiSlider) {
-        calculator.slotWidth = parseFloat(sliders.slotWidth.noUiSlider.get());
-    }
-    if (sliders.slotHeight && sliders.slotHeight.noUiSlider) {
-        calculator.slotHeight = parseFloat(sliders.slotHeight.noUiSlider.get());
-    }
-    if (sliders.slotLength && sliders.slotLength.noUiSlider) {
-        calculator.slotLength = parseFloat(sliders.slotLength.noUiSlider.get());
-    }
-    if (sliders.driverSizeCM && sliders.driverSizeCM.noUiSlider) {
-        calculator.driverDiameter = parseFloat(sliders.driverSizeCM.noUiSlider.get()) * 10; // см -> мм
-    }
-    if (sliders.driverCount && sliders.driverCount.noUiSlider) {
-        calculator.driverCount = parseInt(sliders.driverCount.noUiSlider.get());
-    }
-    
-    // Типы
-    const boxTypeRadio = document.querySelector('input[name="boxType"]:checked');
-    if (boxTypeRadio) calculator.boxType = boxTypeRadio.value;
-    
-    const usePortCheckbox = document.getElementById('usePort');
-    if (usePortCheckbox) calculator.usePort = usePortCheckbox.checked;
-    
-    const useSlotPortCheckbox = document.getElementById('useSlotPort');
-    if (useSlotPortCheckbox) calculator.useSlotPort = useSlotPortCheckbox.checked;
-    
-    // Обновить 3D
-    updateThreeView();
-    updateDisplayValues();
-}
-
-function updateAllUI() {
-    if (!window.calculator) {
-        console.warn('Calculator не инициализирован');
-        return;
-    }
-    
-    // Обновить слайдеры
-    if (sliders.width && sliders.width.noUiSlider) sliders.width.noUiSlider.set(calculator.width);
-    if (sliders.height && sliders.height.noUiSlider) sliders.height.noUiSlider.set(calculator.height);
-    if (sliders.depth && sliders.depth.noUiSlider) sliders.depth.noUiSlider.set(calculator.depth);
-    if (sliders.thickness && sliders.thickness.noUiSlider) sliders.thickness.noUiSlider.set(calculator.thickness);
-    if (sliders.portDiameter && sliders.portDiameter.noUiSlider) sliders.portDiameter.noUiSlider.set(calculator.portDiameter);
-    if (sliders.portLength && sliders.portLength.noUiSlider) sliders.portLength.noUiSlider.set(calculator.portLength);
-    if (sliders.slotWidth && sliders.slotWidth.noUiSlider) sliders.slotWidth.noUiSlider.set(calculator.slotWidth);
-    if (sliders.slotHeight && sliders.slotHeight.noUiSlider) sliders.slotHeight.noUiSlider.set(calculator.slotHeight);
-    if (sliders.slotLength && sliders.slotLength.noUiSlider) sliders.slotLength.noUiSlider.set(calculator.slotLength);
-    if (sliders.driverSizeCM && sliders.driverSizeCM.noUiSlider) sliders.driverSizeCM.noUiSlider.set(calculator.driverDiameter / 10);
-    if (sliders.driverCount && sliders.driverCount.noUiSlider) sliders.driverCount.noUiSlider.set(calculator.driverCount);
-    
-    // Обновить радиок��опки
-    const boxTypeRadio = document.querySelector(`input[name="boxType"][value="${calculator.boxType}"]`);
-    if (boxTypeRadio) boxTypeRadio.checked = true;
-    
-    const usePortCheckbox = document.getElementById('usePort');
-    if (usePortCheckbox) usePortCheckbox.checked = calculator.usePort;
-    
-    const useSlotPortCheckbox = document.getElementById('useSlotPort');
-    if (useSlotPortCheckbox) useSlotPortCheckbox.checked = calculator.useSlotPort;
-    
-    updateDisplayValues();
-}
-
-function updateDisplayValues() {
-    if (!window.calculator) return;
-    
-    const volume = calculator.calculateVolume();
-    const frequency = calculator.calculatePortFrequency();
-    
-    // Размеры
-    const widthValue = document.getElementById('widthValue');
-    if (widthValue) widthValue.textContent = calculator.width.toFixed(2);
-    
-    const heightValue = document.getElementById('heightValue');
-    if (heightValue) heightValue.textContent = calculator.height.toFixed(2);
-    
-    const depthValue = document.getElementById('depthValue');
-    if (depthValue) depthValue.textContent = calculator.depth.toFixed(2);
-    
-    const thicknessValue = document.getElementById('thicknessValue');
-    if (thicknessValue) thicknessValue.textContent = calculator.thickness.toFixed(2);
-    
-    // Порты
-    const portDiameterValue = document.getElementById('portDiameterValue');
-    if (portDiameterValue) portDiameterValue.textContent = calculator.portDiameter.toFixed(2);
-    
-    const portLengthValue = document.getElementById('portLengthValue');
-    if (portLengthValue) portLengthValue.textContent = calculator.portLength.toFixed(2);
-    
-    const tuningFreq = document.getElementById('tuningFreq');
-    if (tuningFreq) tuningFreq.textContent = frequency.toFixed(2);
-    
-    const slotWidthValue = document.getElementById('slotWidthValue');
-    if (slotWidthValue) slotWidthValue.textContent = calculator.slotWidth.toFixed(2);
-    
-    const slotHeightValue = document.getElementById('slotHeightValue');
-    if (slotHeightValue) slotHeightValue.textContent = calculator.slotHeight.toFixed(2);
-    
-    const slotLengthValue = document.getElementById('slotLengthValue');
-    if (slotLengthValue) slotLengthValue.textContent = calculator.slotLength.toFixed(2);
-    
-    // Динамик (любой размер, от 0.1 см)
-    const inchesValue = calculator.driverDiameter / 25.4;
-    const driverSizeInchesValue = document.getElementById('driverSizeInchesValue');
-    if (driverSizeInchesValue) driverSizeInchesValue.textContent = inchesValue.toFixed(2);
-    
-    const driverSizeCMValue = document.getElementById('driverSizeCMValue');
-    if (driverSizeCMValue) driverSizeCMValue.textContent = (calculator.driverDiameter / 10).toFixed(2);
-    
-    const driverCountValue = document.getElementById('driverCountValue');
-    if (driverCountValue) driverCountValue.textContent = calculator.driverCount;
-    
-    // Объем
-    const volumeLiters = document.getElementById('volumeLiters');
-    if (volumeLiters) volumeLiters.textContent = volume.liters.toFixed(2);
-    
-    const volumeCm3 = document.getElementById('volumeCm3');
-    if (volumeCm3) volumeCm3.textContent = volume.cm3.toFixed(2);
-    
-    const volumeInches = document.getElementById('volumeInches');
-    if (volumeInches) volumeInches.textContent = volume.inches.toFixed(2);
-}
-
-function updateThreeView() {
-    if (!window.threeSetup || !window.calculator) return;
-    
-    const portLocationRadio = document.querySelector('input[name="portLocation"]:checked');
-    const driverLocationRadio = document.querySelector('input[name="driverLocation"]:checked');
-    
-    const portData = {
-        enabled: calculator.usePort,
-        diameter: calculator.portDiameter,
-        length: calculator.portLength,
-        position: portLocationRadio ? portLocationRadio.value : 'front',
-        slotEnabled: calculator.useSlotPort,
-        slotWidth: calculator.slotWidth,
-        slotHeight: calculator.slotHeight,
-        slotLength: calculator.slotLength,
-        slotPosition: portLocationRadio ? portLocationRadio.value : 'front'
+function buildField(el, api) {
+    const key = el.dataset.key;
+    const scale = Number(el.dataset.scale || 1);
+    const id = `f${uid++}`;
+    el.innerHTML = `
+        <div class="field-head">
+            <label for="${id}">${el.dataset.label}</label>
+            <div class="field-input">
+                <input type="number" id="${id}" step="${el.dataset.step}" min="${el.dataset.nmin ?? el.dataset.min}" max="${el.dataset.nmax ?? el.dataset.max}" inputmode="decimal">
+                <span>${el.dataset.unit || ''}</span>
+            </div>
+        </div>
+        <input type="range" min="${el.dataset.min}" max="${el.dataset.max}" step="${el.dataset.step}" aria-label="${el.dataset.label}">`;
+    const number = el.querySelector('input[type=number]');
+    const range = el.querySelector('input[type=range]');
+    el._sync = state => {
+        const value = getPath(state, key) / scale;
+        const shown = round(value, decimals(el.dataset.step));
+        if (document.activeElement !== number) number.value = shown;
+        if (document.activeElement !== range) range.value = value;
+        const fill = ((Math.min(Math.max(value, range.min), range.max) - range.min) / (range.max - range.min)) * 100;
+        range.style.setProperty('--fill', `${fill}%`);
     };
-    
-    const driverData = {
-        diameter: calculator.driverDiameter,
-        count: calculator.driverCount,
-        position: driverLocationRadio ? driverLocationRadio.value : 'front'
+    range.addEventListener('input', () => {
+        number.value = range.value;
+        api.set(key, Number(range.value) * scale);
+    });
+    number.addEventListener('input', () => {
+        const v = parseFloat(number.value.replace(',', '.'));
+        if (Number.isFinite(v)) api.set(key, v * scale);
+    });
+    number.addEventListener('change', () => el._sync(api.getState()));
+    number.addEventListener('blur', () => el._sync(api.getState()));
+}
+
+function buildChoices(el, api) {
+    const key = el.dataset.choice;
+    const name = `c${uid++}`;
+    (CHOICE_OPTIONS[key] || []).forEach(opt => {
+        const label = document.createElement('label');
+        label.className = 'choice';
+        label.innerHTML = `
+            <input type="radio" name="${name}" value="${opt.value}">
+            <span class="body">
+                ${opt.texture ? `<span class="swatch" data-texture="${opt.texture}"></span>` : ''}
+                <span class="title">${opt.title}</span>
+                ${opt.desc ? `<span class="desc">${opt.desc}</span>` : ''}
+            </span>`;
+        label.querySelector('input').addEventListener('change', e => {
+            if (e.target.checked) api.set(key, opt.value);
+        });
+        el.appendChild(label);
+    });
+    el._sync = state => {
+        const value = getPath(state, key);
+        el.querySelectorAll('input').forEach(input => { input.checked = input.value === value; });
     };
-    
-    threeSetup.updateBox(
-        calculator.width,
-        calculator.height,
-        calculator.depth,
-        calculator.thickness,
-        calculator.boxType,
-        portData,
-        driverData
-    );
 }
 
-function showNotification(message) {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        animation: slideInRight 0.3s ease;
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 2000);
+/** Обновить все элементы управления по состоянию. */
+export function syncUI(state) {
+    document.querySelectorAll('.field, [data-choice]').forEach(el => el._sync && el._sync(state));
+    document.querySelectorAll('[data-toggle]').forEach(input => {
+        input.checked = !!getPath(state, input.dataset.toggle);
+    });
+    document.querySelectorAll('[data-show]').forEach(el => {
+        el.classList.toggle('is-hidden', !el.dataset.show.split(',').includes(state.boxType));
+    });
+    document.querySelectorAll('[data-hide]').forEach(el => {
+        el.classList.toggle('is-hidden', el.dataset.hide.split(',').includes(state.boxType));
+    });
 }
 
-// CSS для уведомлений
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
+const fmt = (v, digits = 1) => round(v, digits).toLocaleString('ru-RU');
+
+/** Панель результатов, предупреждения и таблица раскроя. */
+export function renderResults(design) {
+    const rows = [];
+    rows.push(`<div class="type">${BOX_TYPE_LABELS[design.type]}</div>`);
+    rows.push(row('Объём брутто', `${fmt(design.grossLiters, 2)} л`));
+    rows.push(row('Объём нетто', `${fmt(design.netLiters, 2)} л`));
+    if (design.isBandpass) {
+        rows.push('<div class="sep"></div>');
+        design.chambers.forEach(ch => {
+            rows.push(row(ch.name, `${fmt(ch.liters, 2)} л`));
+            if (ch.frequency) rows.push(row('— настройка Fb', `${fmt(ch.frequency)} Гц`));
+        });
+    } else if (design.chambers[0].frequency) {
+        rows.push(row('Частота настройки Fb', `${fmt(design.chambers[0].frequency)} Гц`));
     }
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
+    rows.push('<div class="sep"></div>');
+    rows.push(row('Внутр. размеры', `${fmt(design.inner.w, 0)}×${fmt(design.inner.h, 0)}×${fmt(design.inner.d, 0)} мм`));
+    rows.push(row('Масса корпуса ≈', `${fmt(design.massKg)} кг`));
+    document.getElementById('stats').innerHTML = rows.join('');
+
+    document.getElementById('warnings').innerHTML = design.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('');
+
+    const table = document.getElementById('cutTable');
+    table.innerHTML = `
+        <thead><tr><th>Деталь</th><th class="num">Длина</th><th class="num">Ширина</th><th class="num">S</th><th class="num">Отв.</th></tr></thead>
+        <tbody>${design.cutList.map(c => `
+            <tr><td>${c.name}</td><td class="num">${fmt(Math.max(c.w, c.h))}</td><td class="num">${fmt(Math.min(c.w, c.h))}</td><td class="num">${fmt(c.t)}</td><td class="num">${c.holes || '—'}</td></tr>`).join('')}
+        </tbody>`;
+    document.getElementById('cutSummary').textContent =
+        `Деталей: ${design.cutList.length}. Площадь материала: ${fmt(design.sheetArea, 2)} м² (без учёта пропила). Размеры в мм.`;
+}
+
+function row(label, value) {
+    return `<div class="row"><span>${label}</span><span>${value}</span></div>`;
+}
+
+function decimals(step) {
+    const s = String(step);
+    return s.includes('.') ? s.split('.')[1].length : 0;
+}
+
+function escapeHtml(s) {
+    return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+export function toast(message, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = message;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 2600);
+}
+
+function requestIdleCallbackCompat(fn) {
+    if ('requestIdleCallback' in window) window.requestIdleCallback(fn, { timeout: 1500 });
+    else setTimeout(fn, 200);
+}
