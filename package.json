@@ -1,0 +1,33 @@
+{
+  "name": "speaker-box-designer",
+  "productName": "Speaker Box Designer",
+  "version": "2.0.0",
+  "description": "Конструктор акустических корпусов",
+  "author": "Xadby",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win portable --x64",
+    "dist:linux": "electron-builder --linux AppImage --x64"
+  },
+  "build": {
+    "appId": "com.xadby.speakerboxdesigner",
+    "artifactName": "SpeakerBoxDesigner-${version}-${arch}.${ext}",
+    "files": [
+      "index.html",
+      "css/**",
+      "js/**",
+      "vendor/**",
+      "electron/**",
+      "build/icon.png"
+    ],
+    "directories": { "output": "dist" },
+    "win": { "icon": "build/icon.ico" },
+    "linux": { "icon": "build/icon.png", "category": "Graphics" }
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}
